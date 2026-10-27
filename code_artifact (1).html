@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>또박또박 읽기 연습장</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Gaegu", cursive;
+        background-color: #f0f9ff;
+      }
+      .reading-card {
+        background: white;
+        border-radius: 32px;
+        box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.1);
+        border: 6px solid #3b82f6;
+        transition: all 0.3s ease;
+      }
+      .char-chip {
+        display: inline-block;
+        padding: 4px 10px;
+        margin: 4px 2px;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+        border-bottom: 5px solid #e2e8f0;
+        font-size: 2.2rem;
+        line-height: 1.3;
+        background: #fff;
+        user-select: none;
+      }
+      .char-chip:hover {
+        background-color: #f1f5f9;
+        transform: translateY(-2px);
+      }
+      .char-chip.wrong {
+        background-color: #fee2e2;
+        border-bottom: 5px solid #ef4444;
+        color: #b91c1c;
+        transform: scale(1.05);
+        box-shadow: 0 4px 10px rgba(239, 68, 68, 0.2);
+      }
+      .char-chip.ai-detected {
+        box-shadow: 0 0 0 4px #fbbf24;
+        position: relative;
+      }
+      .char-chip.ai-detected::after {
+        content: "🤖";
+        position: absolute;
+        top: -18px;
+        right: -8px;
+        font-size: 1rem;
+      }
+      .space-divider {
+        display: inline-block;
+        width: 1.2rem;
+      }
+      .coach-bubble {
+        border-left: 8px solid #fbbf24;
+        background-color: #fffbeb;
+      }
+      .step2-banner {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      }
+      .recording-glow {
+        animation: glow 1s infinite alternate;
+      }
+      @keyframes glow {
+        from {
+          box-shadow: 0 0 5px #ef4444;
+          border-color: #ef4444;
+        }
+        to {
+          box-shadow: 0 0 20px #ef4444;
+          border-color: #f87171;
+        }
+      }
+      .self-check-active {
+        border: 6px solid #f59e0b !important;
+        background-color: #fffbeb !important;
+      }
+    </style>
+  </head>
+  <body class="p-4 md:p-8 min-h-screen flex flex-col items-center pb-10">
+    <div class="max-w-3xl w-full text-center mb-6">
+      <h1 class="text-5xl md:text-7xl font-bold text-blue-600 mb-2">
+        또박또박 읽기 연습장
+      </h1>
+      <p class="text-2xl text-blue-800 font-bold opacity-80">
+        발음 전문가 AI 코치와 함께해요!
+      </p>
+    </div>
+
+    <!-- 학년 선택 버튼 -->
+    <div
+      id="grade-selector-container"
+      class="flex flex-wrap justify-center gap-4 mb-6"
+    >
+      <button
+        onclick="selectGrade(3)"
+        id="grade-3"
+        class="grade-btn px-8 py-3 bg-white border-4 border-blue-200 rounded-full text-2xl font-bold text-blue-400 transition-all hover:border-blue-400"
+      >
+        3학년
+      </button>
+      <button
+        onclick="selectGrade(4)"
+        id="grade-4"
+        class="grade-btn px-8 py-3 bg-white border-4 border-blue-200 rounded-full text-2xl font-bold text-blue-400 transition-all hover:border-blue-400"
+      >
+        4학년
+      </button>
+      <button
+        onclick="selectGrade(5)"
+        id="grade-5"
+        class="grade-btn px-8 py-3 bg-white border-4 border-blue-200 rounded-full text-2xl font-bold text-blue-400 transition-all hover:border-blue-400"
+      >
+        5학년
+      </button>
+      <button
+        onclick="selectGrade(6)"
+        id="grade-6"
+        class="grade-btn px-8 py-3 bg-white border-4 border-blue-200 rounded-full text-2xl font-bold text-blue-400 transition-all hover:border-blue-400"
+      >
+        6학년
+      </button>
+    </div>
+
+    <!-- 단계별 가이드 배너 -->
+    <div id="main-guide-banner" class="max-w-4xl w-full mb-6 hidden">
+      <div
+        id="banner-style"
+        class="text-white p-6 rounded-3xl shadow-xl flex items-center justify-between"
+      >
+        <div class="flex items-center gap-4">
+          <span id="guide-icon" class="text-5xl">🎧</span>
+          <div>
+            <h3 id="guide-title" class="text-2xl font-bold">
+              이제 내 목소리를 들어봐요!
+            </h3>
+            <p id="guide-desc" class="text-blue-100 text-lg">
+              녹음된 소리를 들으며 틀린 글자를 직접 터치해 보세요.
+            </p>
+          </div>
+        </div>
+        <div
+          id="check-count-badge"
+          class="bg-white text-orange-600 px-6 py-2 rounded-2xl font-bold text-2xl shadow-inner"
+        >
+          체크: <span id="current-check-count">0</span>개
+        </div>
+      </div>
+    </div>
+
+    <main id="main-content" class="max-w-5xl w-full space-y-6 hidden">
+      <div
+        id="capture-area"
+        class="reading-card p-10 min-h-[500px] flex flex-col relative"
+      >
+        <div class="flex justify-between items-center mb-8">
+          <div class="flex items-center gap-3">
+            <span
+              id="badge-step"
+              class="bg-blue-600 text-white px-5 py-1.5 rounded-full text-xl font-bold"
+              >STEP 1</span
+            >
+            <span id="badge-text" class="text-blue-600 font-bold text-xl"
+              >지문 읽기</span
+            >
+          </div>
+          <button
+            onclick="loadRandomPassage()"
+            class="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-xl font-bold text-gray-600 transition-colors"
+          >
+            🔄 다른 지문
+          </button>
+        </div>
+
+        <h2
+          id="passage-title"
+          class="text-4xl font-bold mb-8 text-gray-800 text-center border-b-2 border-blue-50 pb-6"
+        >
+          지문 제목
+        </h2>
+        <div
+          id="passage-content"
+          class="flex-grow leading-relaxed text-gray-700 text-left bg-blue-50/20 p-8 rounded-3xl border-2 border-dashed border-blue-100 mb-6"
+        ></div>
+
+        <!-- 분석 대시보드 -->
+        <div
+          id="analysis-dashboard"
+          class="hidden pt-8 border-t-4 border-blue-50 space-y-8"
+        >
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-slate-50 p-5 rounded-2xl border-2 border-slate-100">
+              <p class="text-sm text-slate-400 font-bold mb-1">낭독 시간</p>
+              <p id="stat-time" class="text-3xl font-bold text-slate-700">
+                00:00
+              </p>
+            </div>
+            <div class="bg-red-50 p-5 rounded-2xl border-2 border-red-100">
+              <p class="text-sm text-red-400 font-bold mb-1">내가 찾은 오류</p>
+              <p id="stat-wrong" class="text-3xl font-bold text-red-600">0</p>
+            </div>
+            <div
+              class="bg-yellow-50 p-5 rounded-2xl border-2 border-yellow-100"
+            >
+              <p class="text-sm text-yellow-500 font-bold mb-1">AI 코칭 단어</p>
+              <p id="stat-ai-count" class="text-3xl font-bold text-yellow-700">
+                0
+              </p>
+            </div>
+            <div class="bg-green-50 p-5 rounded-2xl border-2 border-green-100">
+              <p class="text-sm text-green-500 font-bold mb-1">정확도</p>
+              <p id="stat-accuracy" class="text-3xl font-bold text-green-600">
+                100%
+              </p>
+            </div>
+          </div>
+
+          <!-- AI 발음 코칭 리포트 -->
+          <div
+            id="ai-coach-section"
+            class="coach-bubble p-8 rounded-3xl shadow-sm"
+          >
+            <h3
+              class="text-3xl font-bold text-yellow-800 mb-6 flex items-center gap-3"
+            >
+              🤖 AI 발음 코칭 리포트
+            </h3>
+            <div id="coach-feedback" class="space-y-5"></div>
+          </div>
+
+          <!-- AI가 인식한 텍스트 -->
+          <div class="bg-blue-50 p-6 rounded-3xl border-2 border-blue-100">
+            <h3
+              class="text-2xl font-bold text-blue-800 mb-3 flex items-center gap-2"
+            >
+              🎙️ AI가 들은 내 목소리
+            </h3>
+            <p
+              id="ai-heard-text"
+              class="text-2xl text-blue-700 leading-relaxed italic bg-white p-4 rounded-2xl border border-blue-200"
+            ></p>
+          </div>
+        </div>
+
+        <!-- 저장 시 표시될 날짜 영역 -->
+        <div
+          id="save-date-container"
+          class="mt-8 pt-4 border-t-2 border-dashed border-gray-100 text-right hidden"
+        >
+          <p class="text-xl font-bold text-gray-400">
+            📅 연습 일시:
+            <span id="current-date-display" class="text-gray-500"></span>
+          </p>
+          <p class="text-lg text-blue-300 font-bold italic">
+            또박또박 읽기 연습장 - AI 발음 분석 결과
+          </p>
+        </div>
+      </div>
+
+      <!-- 하단 컨트롤 영역 -->
+      <div
+        class="w-full bg-white rounded-3xl p-6 shadow-xl border-2 border-blue-100"
+      >
+        <div
+          id="record-area"
+          class="flex items-center justify-center gap-8 py-4"
+        >
+          <button
+            id="record-btn"
+            onclick="toggleRecording()"
+            class="w-20 h-20 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-white shadow-xl transition-all border-4 border-white"
+          >
+            <svg
+              id="mic-icon"
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-10 w-10"
+              fill="none"
+              viewbox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-20a3 3 0 00-3 3v10a3 3 0 006 0V3a3 3 0 00-3-3z"
+              />
+            </svg>
+          </button>
+          <div>
+            <p id="record-status" class="text-2xl font-bold text-gray-700">
+              녹음 시작 버튼을 누르세요
+            </p>
+            <p
+              id="live-timer"
+              class="text-3xl font-bold text-blue-500 tracking-wider"
+            >
+              00:00
+            </p>
+          </div>
+        </div>
+
+        <div
+          id="playback-area"
+          class="hidden flex flex-col md:flex-row items-stretch gap-4"
+        >
+          <div
+            class="flex-grow bg-blue-50/50 p-4 rounded-2xl border-2 border-blue-100 flex flex-col justify-center"
+          >
+            <p class="text-blue-700 font-bold text-lg mb-1">
+              🎧 내 목소리 다시 듣기
+            </p>
+            <audio id="audio-playback" controls class="w-full h-10"></audio>
+          </div>
+          <div class="flex items-stretch gap-3">
+            <button
+              onclick="reRecord()"
+              class="px-6 py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold text-xl hover:bg-gray-200"
+            >
+              재녹음
+            </button>
+            <button
+              id="analyze-btn"
+              onclick="runDeepAnalysis()"
+              class="px-8 py-4 bg-blue-600 text-white rounded-2xl font-bold text-2xl hover:bg-blue-700 shadow-lg animate-pulse whitespace-nowrap"
+            >
+              AI 분석 받기 ✨
+            </button>
+          </div>
+        </div>
+
+        <div id="save-area" class="hidden py-2 flex flex-col md:flex-row gap-4">
+          <button
+            onclick="downloadResult()"
+            class="flex-grow py-5 bg-green-500 text-white rounded-2xl font-bold text-2xl hover:bg-green-600 shadow-xl"
+          >
+            💾 연습 결과 저장하기
+          </button>
+          <button
+            onclick="goToHome()"
+            class="px-10 py-5 bg-blue-50 text-blue-600 border-4 border-blue-200 rounded-2xl font-bold text-2xl hover:bg-blue-100"
+          >
+            🏠 다시하기
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <div
+      id="start-guide"
+      class="text-center py-20 text-gray-300 text-4xl font-bold"
+    >
+      학년을 선택해 주세요! 👆
+    </div>
+
+    <script>
+      // 데이터 및 변수 설정
+      const passageData = {
+        3: [
+          { title: "강아지 솜이", content: "우리 집 강아지 이름은 솜이입니다. 솜이는 하얀 털이 뭉게구름처럼 폭신폭신합니다. 내가 학교에서 돌아오면 꼬리를 살랑살랑 흔들며 반겨줍니다." },
+          { title: "봄나들이", content: "따뜻한 봄바람이 불어옵니다. 산과 들에는 예쁜 꽃들이 활짝 피었습니다. 나비들이 춤을 추는 들판으로 소풍을 가고 싶습니다." },
+          { title: "맛있는 과일", content: "냉장고 안에 빨간 사과와 노란 참외가 있습니다. 엄마께서 깎아주신 과일은 아주 달콤하고 아삭아삭합니다." },
+          { title: "나의 꿈", content: "나는 나중에 멋진 요리사가 되고 싶습니다. 사람들에게 맛있고 건강한 음식을 만들어 줄 때 가장 행복할 것 같습니다." }
+        ],
+        4: [
+          { title: "내 친구 지호", content: "내 짝꿍 지호는 축구를 아주 잘합니다. 점심시간마다 운동장에서 공을 차는 지호의 모습은 정말 멋있고 씩씩해 보입니다." },
+          { title: "우주 여행", content: "밤하늘에 떠 있는 별들은 반짝반짝 빛납니다. 언젠가 우주선을 타고 달나라에 가보고 싶습니다. 무중력 공간에서는 몸이 둥둥 떠다니겠지요?" },
+          { title: "갯벌 체험", content: "지난 주말에 가족들과 서해안 갯벌에 다녀왔습니다. 진흙 속에서 조개를 캐고 작은 게들이 구멍 속으로 쏙 들어가는 것을 보았습니다." },
+          { title: "책 속의 세상", content: "도서관에는 재미있는 책이 아주 많습니다. 모험 이야기를 읽고 있으면 마치 내가 주인공이 된 것처럼 가슴이 두근거리고 설렙니다." }
+        ],
+        5: [
+          { title: "소중한 우리 섬 독도", content: "독도는 동해 바다에 홀로 서 있는 우리 소중한 섬입니다. 험한 파도와 바람 속에서도 묵묵히 자리를 지키고 있습니다. 풍부한 수산 자원과 천연가스가 묻혀 있어 경제적으로도 매우 가치가 높습니다. 우리는 독도를 사랑하고 아끼는 마음을 가져야 합니다." },
+          { title: "환경 보호와 우리의 실천", content: "지구가 아파하고 있습니다. 우리가 무심코 버린 플라스틱 쓰레기 때문에 바다 동물들이 힘들어합니다. 일회용품 사용을 줄이고 재활용을 잘 실천해야 합니다. 작은 습관의 변화가 푸른 지구를 만드는 큰 힘이 됩니다. 지금 바로 나부터 실천해 보는 것은 어떨까요?" },
+          { title: "세종대왕의 한글 창제", content: "조선의 제4대 왕인 세종대왕은 백성을 사랑하는 마음으로 한글을 만드셨습니다. 당시 한자는 배우기 너무 어려워 글을 모르는 백성이 많았습니다. 훈민정음은 누구나 쉽게 배우고 자신의 생각을 자유롭게 표현할 수 있는 과학적인 문자입니다. 세계에서도 그 우수성을 인정받고 있습니다." },
+          { title: "식물의 광합성 원리", content: "식물은 햇빛을 받아 스스로 영양분을 만듭니다. 잎에 있는 엽록체가 태양 에너지를 흡수하여 물과 이산화탄소를 녹말과 산소로 바꿉니다. 이 과정을 광합성이라고 부릅니다. 덕분에 우리 인간을 포함한 동물들은 산소로 숨을 쉬고 식물이 만든 영양분을 먹으며 살아갈 수 있습니다." }
+        ],
+        6: [
+          { title: "민주주의와 시민의 역할", content: "민주주의는 모든 사람이 주인으로서 권리를 누리고 책임을 다하는 정치 제도입니다. 서로의 의견이 다를 때는 대화와 타협을 통해 합리적인 해결책을 찾아야 합니다. 다수결의 원칙을 따르되 소수의 의견도 존중하는 태도가 필요합니다. 성숙한 시민 의식이야말로 민주주의를 지탱하는 가장 든든한 뿌리가 됩니다." },
+          { title: "인공지능과 미래 사회", content: "인공지능 기술이 발전하면서 우리 삶의 모습이 빠르게 변화하고 있습니다. 자율 주행 자동차나 로봇 비서처럼 편리한 도구들이 늘어나고 있습니다. 하지만 인공지능이 인간의 일자리를 대신하거나 윤리적인 문제를 일으킬 수도 있다는 우려도 있습니다. 우리는 기술의 발전을 올바른 방향으로 이끌기 위해 깊이 고민해야 합니다." },
+          { title: "경제 활동과 합리적 소비", content: "우리는 날마다 필요한 물건을 사거나 서비스를 이용하는 경제 활동을 합니다. 소득은 한정되어 있기 때문에 가장 큰 만족을 줄 수 있는 선택을 하는 합리적 소비가 중요합니다. 물건의 가격과 품질을 꼼꼼히 비교하고, 꼭 필요한 것인지 다시 한번 생각하는 습관을 길러야 합니다. 계획적인 소비는 미래를 위한 소중한 준비가 됩니다." },
+          { title: "우주 탐사의 역사와 도전", content: "인류는 아주 오래전부터 저 너머 우주의 비밀을 풀기 위해 노력해 왔습니다. 1969년 아폴로 11호가 인류 최초로 달 착륙에 성공한 이후, 지금은 화성 탐사선이 생명체의 흔적을 찾고 있습니다. 끝없는 호기심과 도전 정신은 인류를 지구 밖 넓은 세상으로 인도하고 있습니다. 언젠가는 다른 행성에서도 사람이 살 수 있는 날이 올지도 모릅니다." }
+        ]
+      };
+
+      const pronunciationRules = {
+        솜이입니다: { target: "소미임니다", rule: "연음 법칙과 비음화가 일어납니다." },
+        축구를: { target: "축꾸를", rule: "ㄱ 받침 뒤에서 된소리 발음이 납니다." },
+        때문에: { target: "때무네", rule: "ㄴ 받침이 뒤로 넘어가는 연음 현상입니다." },
+        묵묵히: { target: "뭉무키", rule: "ㄱ 받침 뒤에 ㅎ이 와서 거센소리 'ㅋ'으로 소리 납니다." },
+        권리를: { target: "궐리를", rule: "ㄴ이 ㄹ을 만나 ㄹ로 변하는 유음화 현상입니다." },
+        광합성: { target: "광합썽", rule: "ㅂ 받침 뒤에서 ㅅ이 된소리 'ㅆ'으로 발음됩니다." },
+        엽록체: { target: "염녹체", rule: "ㅂ이 ㄹ을 만나 'ㅁ'과 'ㄴ'으로 변하는 비음화가 일어납니다." },
+        일자리: { target: "일짜리", rule: "ㄹ 받침 뒤에서 ㅈ이 된소리 'ㅉ'으로 발음됩니다." }
+      };
+
+      let mediaRecorder, isRecording = false, timerInterval, recognition, finalSTT = "", originalText = "", currentGrade = 3, currentPassageIdx = 0;
+
+      if ("webkitSpeechRecognition" in window) {
+        recognition = new webkitSpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = "ko-KR";
+        recognition.onresult = (e) => {
+          let transcript = "";
+          for (let i = 0; i < e.results.length; i++) { transcript += e.results[i][0].transcript + " "; }
+          finalSTT = transcript.trim();
+        };
+      }
+
+      function selectGrade(grade) {
+        currentGrade = grade;
+        currentPassageIdx = 0;
+        document.querySelectorAll(".grade-btn").forEach((b) => b.classList.remove("border-blue-500", "text-blue-600", "bg-blue-50"));
+        document.getElementById(`grade-${grade}`).classList.add("border-blue-500", "text-blue-600", "bg-blue-50");
+        document.getElementById("start-guide").classList.add("hidden");
+        document.getElementById("main-content").classList.remove("hidden");
+        loadRandomPassage();
+      }
+
+      function loadRandomPassage() {
+        const list = passageData[currentGrade];
+        let p = list[currentPassageIdx];
+        currentPassageIdx = (currentPassageIdx + 1) % list.length;
+        originalText = p.content;
+        document.getElementById("passage-title").innerText = p.title;
+        const area = document.getElementById("passage-content");
+        area.innerHTML = "";
+        originalText.split("").forEach((char, index) => {
+          if (char === " ") {
+            area.appendChild(Object.assign(document.createElement("span"), { className: "space-divider" }));
+          } else {
+            const span = document.createElement("span");
+            span.innerText = char;
+            span.className = "char-chip";
+            span.dataset.index = index;
+            span.onclick = function () {
+              if (document.getElementById("playback-area").classList.contains("hidden") && document.getElementById("save-area").classList.contains("hidden")) return;
+              this.classList.toggle("wrong");
+              updateStats();
+            };
+            area.appendChild(span);
+          }
+        });
+        resetUI();
+      }
+
+      function resetUI() {
+        document.getElementById("analysis-dashboard").classList.add("hidden");
+        document.getElementById("main-guide-banner").classList.add("hidden");
+        document.getElementById("save-date-container").classList.add("hidden");
+        document.getElementById("badge-step").innerText = "STEP 1";
+        document.getElementById("record-area").classList.remove("hidden");
+        document.getElementById("playback-area").classList.add("hidden");
+        document.getElementById("save-area").classList.add("hidden");
+        document.querySelectorAll(".char-chip").forEach((c) => c.classList.remove("wrong", "ai-detected"));
+        document.getElementById("live-timer").innerText = "00:00";
+        finalSTT = "";
+      }
+
+      async function toggleRecording() {
+        if (!isRecording) {
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            let chunks = [];
+            mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+            mediaRecorder.onstop = () => {
+              const audioBlob = new Blob(chunks, { type: "audio/wav" });
+              document.getElementById("audio-playback").src = URL.createObjectURL(audioBlob);
+              document.getElementById("record-area").classList.add("hidden");
+              document.getElementById("playback-area").classList.remove("hidden");
+              showStep2UI();
+            };
+            mediaRecorder.start();
+            finalSTT = "";
+            if (recognition) recognition.start();
+            isRecording = true;
+            document.getElementById("record-btn").classList.add("recording-glow");
+            let s = 0;
+            timerInterval = setInterval(() => {
+              s++;
+              document.getElementById("live-timer").innerText = `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+            }, 1000);
+          } catch (e) {
+            alert("마이크 사용 권한이 필요합니다.");
+          }
+        } else {
+          mediaRecorder.stop();
+          if (recognition) recognition.stop();
+          isRecording = false;
+          document.getElementById("record-btn").classList.remove("recording-glow");
+          clearInterval(timerInterval);
+        }
+      }
+
+      function showStep2UI() {
+        document.getElementById("main-guide-banner").classList.remove("hidden");
+        document.getElementById("banner-style").className = "step2-banner text-white p-6 rounded-3xl shadow-xl flex items-center justify-between";
+        document.getElementById("badge-step").className = "bg-orange-500 text-white px-5 py-1.5 rounded-full text-xl font-bold";
+        document.getElementById("badge-step").innerText = "STEP 2";
+        document.getElementById("capture-area").classList.add("self-check-active");
+      }
+
+      function getLevenshteinDistance(a, b) {
+        const matrix = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+        for (let j = 1; j <= b.length; j++) matrix[0][j] = j;
+        for (let i = 1; i <= a.length; i++) {
+          for (let j = 1; j <= b.length; j++) {
+            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+            matrix[i][j] = Math.min(matrix[i - 1][j] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j - 1] + cost);
+          }
+        }
+        return matrix[a.length][b.length];
+      }
+
+      function runDeepAnalysis() {
+        const sttSnapshot = finalSTT.trim();
+        document.getElementById("analysis-dashboard").classList.remove("hidden");
+        document.getElementById("playback-area").classList.add("hidden");
+        document.getElementById("save-area").classList.remove("hidden");
+        document.getElementById("ai-heard-text").innerText = sttSnapshot || "(인식된 내용 없음)";
+        document.getElementById("badge-step").className = "bg-green-600 text-white px-5 py-1.5 rounded-full text-xl font-bold";
+        document.getElementById("badge-step").innerText = "STEP 3";
+        document.getElementById("capture-area").classList.remove("self-check-active");
+
+        let feedbackHtml = "";
+        let aiErrorCount = 0;
+        const originalWords = originalText.replace(/[.,]/g, "").split(/\s+/);
+        const sttWords = sttSnapshot.replace(/[.,]/g, "").split(/\s+/);
+
+        originalWords.forEach((oWord) => {
+          if (oWord.length < 1) return;
+          const bestMatch = sttWords.reduce((best, sWord) => {
+            const dist = getLevenshteinDistance(oWord, sWord);
+            return dist < best.dist ? { word: sWord, dist } : best;
+          }, { word: "", dist: 99 });
+
+          if (bestMatch.dist > 0) {
+            aiErrorCount++;
+            markAiDetected(oWord);
+            const ruleInfo = pronunciationRules[oWord];
+            feedbackHtml += `
+              <div class="p-6 bg-white border-2 border-yellow-200 rounded-2xl shadow-sm">
+                <div class="flex items-center gap-3 mb-2"><span class="text-3xl font-bold text-blue-600">"${oWord}"</span></div>
+                <div class="bg-blue-50 p-4 rounded-xl">
+                  <p class="font-bold text-red-600 mb-2">실제 인식된 발음: "${bestMatch.word || "발음 누락"}"</p>
+                  ${ruleInfo ? `<p class="font-bold text-blue-800">📢 바른 발음 팁: [${ruleInfo.target}]</p><p class="text-blue-700 text-lg">${ruleInfo.rule}</p>` : `<p class="text-gray-600">이 단어를 조금 더 또박또박 읽어보세요!</p>`}
+                </div>
+              </div>`;
+          }
+        });
+
+        document.getElementById("coach-feedback").innerHTML = feedbackHtml || `<p class="text-center text-xl text-green-600 font-bold py-10">완벽한 발음입니다! 대단해요!</p>`;
+        document.getElementById("stat-ai-count").innerText = aiErrorCount;
+        document.getElementById("stat-time").innerText = document.getElementById("live-timer").innerText;
+        updateStats();
+      }
+
+      function markAiDetected(word) {
+        const chips = Array.from(document.querySelectorAll(".char-chip"));
+        const wordIdx = originalText.indexOf(word);
+        if (wordIdx !== -1) {
+          for (let i = 0; i < word.length; i++) {
+            const targetChar = chips.find((c) => parseInt(c.dataset.index) === wordIdx + i);
+            if (targetChar) targetChar.classList.add("ai-detected");
+          }
+        }
+      }
+
+      function updateStats() {
+        const userCheckedCount = document.querySelectorAll(".char-chip.wrong").length;
+        document.getElementById("current-check-count").innerText = userCheckedCount;
+        document.getElementById("stat-wrong").innerText = userCheckedCount;
+        const total = document.querySelectorAll(".char-chip").length;
+        const aiCount = parseInt(document.getElementById("stat-ai-count").innerText) || 0;
+        document.getElementById("stat-accuracy").innerText = total > 0 ? Math.round(((total - (userCheckedCount + aiCount)) / total) * 100) + "%" : "100%";
+      }
+
+      function reRecord() { loadRandomPassage(); }
+      function goToHome() { location.reload(); }
+
+      function downloadResult() {
+        const now = new Date();
+        const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
+        const fileTimestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}_${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}`;
+
+        document.getElementById("current-date-display").innerText = timestamp;
+        document.getElementById("save-date-container").classList.remove("hidden");
+
+        html2canvas(document.getElementById("capture-area"), { scale: 2, backgroundColor: "#ffffff", logging: false, useCORS: true }).then((canvas) => {
+          const link = document.createElement("a");
+          link.download = `또박또박_연습결과_${fileTimestamp}.png`;
+          link.href = canvas.toDataURL("image/png");
+          link.click();
+        });
+      }
+    </script>
+  </body>
+</html>
